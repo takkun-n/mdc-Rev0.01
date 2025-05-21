@@ -93,16 +93,16 @@ const DataEntryForm: React.FC<DataEntryFormProps> = ({
     
     if (name === 'processId') {
       const selectedProcess = processes.find(p => p.id === value);
-      setFormData({
-        ...formData,
+      setFormData(prev => ({
+        ...prev,
         processId: value,
         processName: selectedProcess?.name || ''
-      });
+      }));
     } else {
-      setFormData({
-        ...formData,
+      setFormData(prev => ({
+        ...prev,
         [name]: type === 'number' ? parseFloat(value) || 0 : value
-      });
+      }));
     }
   };
 
