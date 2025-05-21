@@ -24,6 +24,7 @@ const DataEntry: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [processes, setProcesses] = useState<Process[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -31,37 +32,60 @@ const DataEntry: React.FC = () => {
   }, []);
 
   const loadData = () => {
-    const data = getProductionData();
-    setProductionData(data);
-    setFilteredData(data);
+    try {
+      const data = getProductionData();
+      setProductionData(data);
+      setFilteredData(data);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
   };
 
   const loadMasterData = () => {
-    const savedProducts = localStorage.getItem('products');
-    const savedProcesses = localStorage.getItem('processes');
-    const savedWorkers = localStorage.getItem('workers');
-    
-    if (savedProducts) {
-      setProducts(JSON.parse(savedProducts));
-    }
-    
-    if (savedProcesses) {
-      setProcesses(JSON.parse(savedProcesses));
-    }
-    
-    if (savedWorkers) {
-      setWorkers(JSON.parse(savedWorkers));
+    try {
+      const savedProducts = localStorage.getItem('products');
+      const savedProcesses = localStorage.getItem('processes');
+      const savedWorkers = localStorage.getItem('workers');
+      
+      if (savedProducts) {
+        setProducts(JSON.parse(savedProducts));
+      }
+      
+      if (savedProcesses) {
+        setProcesses(JSON.parse(savedProcesses));
+      }
+      
+      if (savedWorkers) {
+        setWorkers(JSON.parse(savedWorkers));
+      }
+    } catch (error) {
+      console.error('Error loading master data:', error);
     }
   };
 
   const handleDataSubmit = (data: ProductionData) => {
-    if (editingData) {
-      updateProductionData(data);
-      setEditingData(undefined);
-    } else {
-      addProductionData(data);
+    try {
+      setSubmitError(null);
+      let success;
+      
+      if (editingData) {
+        success = updateProductionData(data);
+        if (success) {
+          setEditingData(undefined);
+        }
+      } else {
+        success = addProductionData(data);
+      }
+      
+      if (success) {
+        loadData();
+      } else {
+        setSubmitError('データの保存中にエラーが発生しました。');
+      }
+    } catch (error) {
+      console.error('Error submitting data:', error);
+      setSubmitError('データの保存中にエラーが発生しました。');
     }
-    loadData();
   };
 
   const handleEdit = (data: ProductionData) => {
@@ -71,8 +95,12 @@ const DataEntry: React.FC = () => {
 
   const handleDelete = (id: string) => {
     if (window.confirm('このデータを削除してもよろしいですか？')) {
-      deleteProductionData(id);
-      loadData();
+      const success = deleteProductionData(id);
+      if (success) {
+        loadData();
+      } else {
+        alert('データの削除中にエラーが発生しました。');
+      }
     }
   };
 
@@ -87,31 +115,49 @@ const DataEntry: React.FC = () => {
   };
 
   const handleSearch = (term: string) => {
-    if (!term.trim()) {
-      setFilteredData(productionData);
-      return;
+    try {
+      if (!term.trim()) {
+        setFilteredData(productionData);
+        return;
+      }
+      
+      const filtered = filterByProductName(term);
+      setFilteredData(filtered);
+    } catch (error) {
+      console.error('Error searching data:', error);
     }
-    
-    const filtered = filterByProductName(term);
-    setFilteredData(filtered);
   };
 
   const handleDateRangeChange = (startDate: string, endDate: string) => {
-    if (!startDate && !endDate) {
-      setFilteredData(productionData);
-      return;
+    try {
+      if (!startDate && !endDate) {
+        setFilteredData(productionData);
+        return;
+      }
+      
+      const filtered = filterByDateRange(startDate, endDate);
+      setFilteredData(filtered);
+    } catch (error) {
+      console.error('Error filtering by date:', error);
     }
-    
-    const filtered = filterByDateRange(startDate, endDate);
-    setFilteredData(filtered);
   };
 
   const handleExportCSV = () => {
-    exportToCSV(filteredData);
+    try {
+      exportToCSV(filteredData);
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      alert('CSVエクスポート中にエラーが発生しました。');
+    }
   };
 
   const handleExportPDF = () => {
-    exportToPDF(filteredData);
+    try {
+      exportToPDF(filteredData);
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      alert('PDFエクスポート中にエラーが発生しました。');
+    }
   };
 
   return (
@@ -123,6 +169,12 @@ const DataEntry: React.FC = () => {
           <h1 className="text-2xl font-bold mb-1">生産データ管理</h1>
           <p className="text-gray-600">新規データの入力と既存データの閲覧・編集</p>
         </div>
+        
+        {submitError && (
+          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            {submitError}
+          </div>
+        )}
         
         <div className="mb-6">
           <DataEntryForm 
